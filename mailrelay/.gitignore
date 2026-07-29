@@ -1,0 +1,3 @@
+.env
+dkim-keys/*
+!dkim-keys/.gitkeep

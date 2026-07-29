@@ -1,0 +1,55 @@
+services:
+  # Outbound-only MTA. Other services on the compose network reach it,
+  # unauthenticated, at mailrelay:25 or mailrelay:587 (both are open by
+  # default in this image and restricted to RFC1918 / mynetworks).
+  # No `ports:` mapping here on purpose: it must NOT be reachable from the
+  # host or the internet, only from sibling containers on `mailnet`.
+  mailrelay:
+    image: boky/postfix@sha256:aafc772384232497bed875e1eb66b4d3e54ba1ebc86e2e185a6dc1dbc48182ef
+    container_name: mailrelay
+    hostname: ${MAIL_HOSTNAME:-mail.example.com}
+    restart: unless-stopped
+    environment:
+      ALLOWED_SENDER_DOMAINS: ${ALLOWED_SENDER_DOMAINS:-example.com}
+      DKIM_AUTOGENERATE: "1"
+      DKIM_SELECTOR: ${DKIM_SELECTOR:-mail}
+      POSTFIX_myhostname: ${MAIL_HOSTNAME:-mail.example.com}
+      # 'may': use TLS opportunistically for outbound delivery when the
+      # receiving MX offers STARTTLS, fall back to plaintext otherwise.
+      # Direct-to-MX delivery can't require TLS since not all receivers offer it.
+      POSTFIX_smtp_tls_security_level: may
+      # Explicit allow-list, redundant with default but documents intent:
+      # only RFC1918 + loopback (i.e. sibling containers) may relay through this.
+      POSTFIX_mynetworks: 127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+    volumes:
+      # Persist the DKIM keypair across restarts. Without this, the image
+      # generates a NEW keypair on every container start, silently
+      # invalidating the DNS TXT record you published.
+      - ./dkim-keys:/etc/opendkim/keys
+      # Local-testing-only routing: sends *.mailpit.test to mailpit instead
+      # of attempting real MX delivery. Harmless to leave mounted in
+      # production since it only matches the fake .mailpit.test TLD.
+      - ./postfix-init/10-transport.sh:/docker-init.d/10-transport.sh:ro
+    networks:
+      - mailnet
+
+  # Local-only SMTP capture UI, used to visually verify DKIM-signed messages
+  # without depending on real internet delivery. SCDMS's existing stack
+  # already runs mailpit for dev mail capture -- if merging into that
+  # compose file, drop this block and point at the existing service instead.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailrelay-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # web UI, http://localhost:8025 -- fine to publish, read-only capture tool
+    networks:
+      - mailnet
+
+networks:
+  mailnet:
+    driver: bridge
+    # Deliberately NOT `internal: true` -- mailrelay needs real outbound
+    # internet access (DNS + port 25) to deliver to real MX servers.
+    # `internal: true` would block that entirely. Host isolation instead
+    # comes from simply not publishing any ports on the mailrelay service.
