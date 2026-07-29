@@ -33,18 +33,14 @@ services:
     networks:
       - mailnet
 
-  # Local-only SMTP capture UI, used to visually verify DKIM-signed messages
-  # without depending on real internet delivery. SCDMS's existing stack
-  # already runs mailpit for dev mail capture -- if merging into that
-  # compose file, drop this block and point at the existing service instead.
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: mailrelay-mailpit
-    restart: unless-stopped
-    ports:
-      - "8025:8025"   # web UI, http://localhost:8025 -- fine to publish, read-only capture tool
-    networks:
-      - mailnet
+  # No local mailpit service defined here: SCDMS's own compose stack already
+  # runs one (service name `mailpit`, UI at http://localhost:8025). The
+  # transport map in postfix-init/10-transport.sh routes *.mailpit.test to
+  # whatever container resolves as `mailpit` on this network -- when this
+  # mailrelay service is merged into SCDMS's real docker-compose.yml, that
+  # resolves automatically since they'd share a network. For this standalone
+  # test we join SCDMS's `app` network manually (see README) instead of
+  # duplicating a second mailpit and fighting over host ports 1025/8025.
 
 networks:
   mailnet:
