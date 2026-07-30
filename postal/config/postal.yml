@@ -1,0 +1,43 @@
+version: 2
+
+postal:
+  web_hostname: localhost
+  web_protocol: http
+  smtp_hostname: localhost
+
+main_db:
+  host: mariadb
+  username: root
+  password: postal
+  database: postal
+
+message_db:
+  host: mariadb
+  username: root
+  password: postal
+  prefix: postal
+
+smtp_server:
+  default_bind_address: "0.0.0.0"
+
+web_server:
+  default_bind_address: "0.0.0.0"
+
+dns:
+  mx_records:
+    - mx.localhost
+  spf_include: spf.localhost
+  return_path_domain: rp.localhost
+  route_domain: routes.localhost
+  track_domain: track.localhost
+
+smtp:
+  host: 127.0.0.1
+  port: 25
+  username:
+  password:
+  from_name: Postal
+  from_address: postal@psc.gov.vu
+
+rails:
+  secret_key: 8d27eb624e51c8f4f2f6f32553136e14b7342e32a2ccb16393fc4d848542f1a99db232b0e994e9749c2108a38f8ae79474630fa3859e5dda870d18a91332b0fd0d4b5efe86dfd62a03cf61cb66788934353c3bbf9b003db0b53597ae60a460d7fc477c3981aff5d1f4e03d8120f5c3cf091e10ed06a133a7653f67259c300e61

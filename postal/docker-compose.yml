@@ -1,0 +1,72 @@
+services:
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      MARIADB_ROOT_PASSWORD: postal
+    volumes:
+      - postal_mariadb:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - postal
+
+  web:
+    image: ghcr.io/postalserver/postal:3.3.7
+    command: postal web-server
+    volumes:
+      - ./config:/config
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - postal
+
+  smtp:
+    image: ghcr.io/postalserver/postal:3.3.7
+    command: postal smtp-server
+    cap_add:
+      - NET_BIND_SERVICE
+    volumes:
+      - ./config:/config
+    ports:
+      - "127.0.0.1:2525:25"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - postal
+
+  worker:
+    image: ghcr.io/postalserver/postal:3.3.7
+    command: postal worker
+    volumes:
+      - ./config:/config
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - postal
+
+  runner:
+    profiles: ["tools"]
+    image: ghcr.io/postalserver/postal:3.3.7
+    command: postal
+    volumes:
+      - ./config:/config
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - postal
+
+networks:
+  postal:
+    driver: bridge
+
+volumes:
+  postal_mariadb:
